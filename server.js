@@ -6,7 +6,7 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 4567;
 
-const DB_PATH = path.join(__dirname, "stopwatch.json");
+const DB_PATH = path.join("/data", "stopwatch.json");
 
 app.use(cors());
 app.use(express.json());
