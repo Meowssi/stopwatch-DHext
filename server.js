@@ -62,6 +62,14 @@ app.get("/getElapsed", (req, res) => {
   res.json({ elapsedText, timestamp });
 });
 
+// POST /resetAll -> clear ALL timers without starting anything
+app.post("/resetAll", (req, res) => {
+  const cleared = Object.keys(stopwatchData).length;
+  stopwatchData = {};
+  saveData(); // writes an empty {} to /data/stopwatch.json
+  res.json({ ok: true, cleared });
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });
