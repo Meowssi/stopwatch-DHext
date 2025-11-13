@@ -62,13 +62,22 @@ app.get("/getElapsed", (req, res) => {
   res.json({ elapsedText, timestamp });
 });
 
-// POST /resetAll -> clear ALL timers without starting anything
 app.post("/resetAll", (req, res) => {
-  const cleared = Object.keys(stopwatchData).length;
-  stopwatchData = {};
-  saveData(); // writes an empty {} to /data/stopwatch.json
-  res.json({ ok: true, cleared });
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      fs.unlinkSync(DB_PATH);   // 🔥 DELETE the file instead of writing to it
+    }
+
+    stopwatchData = {};         // clear in-memory store
+    saveData();                 // recreate empty file safely
+
+    res.json({ ok: true, cleared: true });
+  } catch (err) {
+    console.error("❌ Reset failed:", err);
+    res.status(500).json({ ok: false, error: "Reset failed." });
+  }
 });
+
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
