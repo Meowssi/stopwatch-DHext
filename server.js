@@ -6,21 +6,25 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 4567;
 
-// ⬅️ Store DB inside project folder (always writable on Render)
-const DB_PATH = path.join(__dirname, "stopwatch.json");
+// Persistent disk path on Render
+const DB_PATH = "/data/stopwatch.json";
 
 app.use(cors());
 app.use(express.json());
 
+// Ensure the file exists on first run
+if (!fs.existsSync(DB_PATH)) {
+  fs.writeFileSync(DB_PATH, "{}");
+}
+
 // Load timestamps from JSON file
 let stopwatchData = {};
-if (fs.existsSync(DB_PATH)) {
-  try {
-    stopwatchData = JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
-  } catch (err) {
-    console.error("❌ Error reading stopwatch.json:", err);
-    stopwatchData = {};
-  }
+try {
+  const fileContent = fs.readFileSync(DB_PATH, "utf8").trim();
+  stopwatchData = fileContent ? JSON.parse(fileContent) : {};
+} catch (err) {
+  console.error("❌ Error reading stopwatch.json:", err);
+  stopwatchData = {};
 }
 
 // Save timestamps to JSON file
@@ -28,7 +32,7 @@ function saveData() {
   try {
     fs.writeFileSync(DB_PATH, JSON.stringify(stopwatchData, null, 2));
   } catch (err) {
-    console.error("❌ Failed to write file:", err);
+    console.error("❌ Failed to write stopwatch.json:", err);
   }
 }
 
@@ -67,18 +71,22 @@ app.get("/getElapsed", (req, res) => {
   res.json({ elapsedText, timestamp });
 });
 
-// ⬅️ NEW reset route that actually works on Render
+// POST /resetAll -> clear ALL timers and recreate the persistent file
 app.post("/resetAll", (req, res) => {
   try {
-    stopwatchData = {};
+    // Delete file fully (Render allows this reliably)
+    if (fs.existsSync(DB_PATH)) {
+      fs.unlinkSync(DB_PATH);
+    }
 
-    // Overwrite file with {}
+    // Recreate clean data file
+    stopwatchData = {};
     fs.writeFileSync(DB_PATH, "{}");
 
-    res.json({ ok: true, message: "All timers reset to never clicked" });
+    res.json({ ok: true, message: "All timers reset to never clicked." });
   } catch (err) {
     console.error("❌ Reset failed:", err);
-    res.status(500).json({ ok: false, error: "Reset failed" });
+    res.status(500).json({ ok: false, error: "Reset failed." });
   }
 });
 
