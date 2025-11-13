@@ -6,7 +6,8 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 4567;
 
-const DB_PATH = path.join("/data", "stopwatch.json");
+// ⬅️ Store DB inside project folder (always writable on Render)
+const DB_PATH = path.join(__dirname, "stopwatch.json");
 
 app.use(cors());
 app.use(express.json());
@@ -15,7 +16,7 @@ app.use(express.json());
 let stopwatchData = {};
 if (fs.existsSync(DB_PATH)) {
   try {
-    stopwatchData = JSON.parse(fs.readFileSync(DB_PATH, "utf-8"));
+    stopwatchData = JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
   } catch (err) {
     console.error("❌ Error reading stopwatch.json:", err);
     stopwatchData = {};
@@ -24,7 +25,11 @@ if (fs.existsSync(DB_PATH)) {
 
 // Save timestamps to JSON file
 function saveData() {
-  fs.writeFileSync(DB_PATH, JSON.stringify(stopwatchData, null, 2));
+  try {
+    fs.writeFileSync(DB_PATH, JSON.stringify(stopwatchData, null, 2));
+  } catch (err) {
+    console.error("❌ Failed to write file:", err);
+  }
 }
 
 // POST endpoint to log a click
@@ -62,22 +67,20 @@ app.get("/getElapsed", (req, res) => {
   res.json({ elapsedText, timestamp });
 });
 
+// ⬅️ NEW reset route that actually works on Render
 app.post("/resetAll", (req, res) => {
   try {
-    if (fs.existsSync(DB_PATH)) {
-      fs.unlinkSync(DB_PATH);   // 🔥 DELETE the file instead of writing to it
-    }
+    stopwatchData = {};
 
-    stopwatchData = {};         // clear in-memory store
-    saveData();                 // recreate empty file safely
+    // Overwrite file with {}
+    fs.writeFileSync(DB_PATH, "{}");
 
-    res.json({ ok: true, cleared: true });
+    res.json({ ok: true, message: "All timers reset to never clicked" });
   } catch (err) {
     console.error("❌ Reset failed:", err);
-    res.status(500).json({ ok: false, error: "Reset failed." });
+    res.status(500).json({ ok: false, error: "Reset failed" });
   }
 });
-
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
